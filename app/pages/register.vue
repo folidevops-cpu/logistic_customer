@@ -168,23 +168,18 @@ const handleRegister = async () => {
       }) as any
       
       if (loginResponse.access_token) {
-        // Store the token
-        const token = useCookie('auth-token')
-        token.value = loginResponse.access_token
-        
-        // Get user information with the token
-        const userResponse = await $fetch('/users/me', {
-          baseURL: config.public.apiBaseUrl,
-          headers: {
-            Authorization: `Bearer ${loginResponse.access_token}`
-          }
-        }) as any
-        
-        // Set user session
+        // Use the new nuxt-auth-utils login API
         await $fetch('/api/auth/login', {
           method: 'POST',
-          body: userResponse
+          body: {
+            email: form.email,
+            password: form.password
+          }
         })
+        
+        // Force refresh the user session to ensure UI updates immediately
+        const { fetch: refreshSession } = useUserSession()
+        await refreshSession()
         
         await navigateTo('/dashboard')
       }

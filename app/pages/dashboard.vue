@@ -5,15 +5,6 @@
       <div class="px-4 py-6 sm:px-0">
         <div class="flex justify-between items-center">
           <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <div class="flex items-center space-x-4">
-            <span class="text-gray-700">Welcome, {{ getFullName(user) }}</span>
-            <button
-              @click="handleLogout"
-              class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Logout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -175,8 +166,8 @@ definePageMeta({
 })
 
 const trackingNumber = ref('')
-const recentShipments = ref([])
-const recentTickets = ref([])
+const recentShipments = ref<any[]>([])
+const recentTickets = ref<any[]>([])
 
 // Fetch recent data on mount
 onMounted(async () => {
@@ -188,7 +179,7 @@ const fetchRecentShipments = async () => {
     const response = await $fetch('/shipments/my', {
       baseURL: config.public.apiBaseUrl,
       headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
+        Authorization: `Bearer ${(user.value as any)?.access_token}`
       },
       query: {
         limit: 5
@@ -206,7 +197,7 @@ const fetchRecentTickets = async () => {
     const response = await $fetch('/tickets/mine', {
       baseURL: config.public.apiBaseUrl,
       headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
+        Authorization: `Bearer ${(user.value as any)?.access_token}`
       },
       query: {
         limit: 5
@@ -223,11 +214,6 @@ const trackShipment = () => {
   if (trackingNumber.value.trim()) {
     navigateTo(`/track/${trackingNumber.value.trim()}`)
   }
-}
-
-const handleLogout = async () => {
-  await clear()
-  await navigateTo('/login')
 }
 
 const getStatusClass = (status: string) => {

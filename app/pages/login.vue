@@ -85,8 +85,8 @@ const handleLogin = async () => {
   error.value = ''
   
   try {
-    const loginResponse = await $fetch('/auth/login', {
-      baseURL: config.public.apiBaseUrl,
+    // Use the new nuxt-auth-utils compatible login API
+    const response = await $fetch('/api/auth/login', {
       method: 'POST',
       body: {
         email: form.email,
@@ -94,29 +94,16 @@ const handleLogin = async () => {
       }
     }) as any
     
-    if (loginResponse.access_token) {
-      // Store the token
-      const token = useCookie('auth-token')
-      token.value = loginResponse.access_token
+    if (response.success) {
+      // Force refresh the user session to ensure UI updates immediately
+      const { fetch: refreshSession } = useUserSession()
+      await refreshSession()
       
-      // Get user information
-      const userResponse = await $fetch('/users/me', {
-        baseURL: config.public.apiBaseUrl,
-        headers: {
-          Authorization: `Bearer ${loginResponse.access_token}`
-        }
-      }) as any
-      
-      // Set user session
-      await $fetch('/api/auth/login', {
-        method: 'POST',
-        body: userResponse
-      })
-      
+      // Navigate to dashboard
       await navigateTo('/dashboard')
     }
   } catch (err: any) {
-    error.value = err.data?.detail || 'Login failed. Please try again.'
+    error.value = err.data?.message || err.data?.statusMessage || 'Login failed. Please try again.'
   } finally {
     loading.value = false
   }
