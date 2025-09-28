@@ -99,8 +99,15 @@ const handleLogin = async () => {
       const { fetch: refreshSession } = useUserSession()
       await refreshSession()
       
-      // Navigate to dashboard
-      await navigateTo('/dashboard')
+      // Check if there's a redirect destination from the auth middleware
+      const redirectTo = import.meta.client ? sessionStorage.getItem('redirectTo') : null
+      if (redirectTo) {
+        sessionStorage.removeItem('redirectTo')
+        await navigateTo(redirectTo)
+      } else {
+        // Navigate to dashboard as default
+        await navigateTo('/dashboard')
+      }
     }
   } catch (err: any) {
     error.value = err.data?.message || err.data?.statusMessage || 'Login failed. Please try again.'

@@ -162,7 +162,7 @@ const config = useRuntimeConfig()
 
 // Protect this page
 definePageMeta({
-  auth: true
+  middleware: 'auth'
 })
 
 const trackingNumber = ref('')

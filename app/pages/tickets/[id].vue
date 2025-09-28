@@ -197,14 +197,13 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: 'auth'
+})
+
 const { user } = useUserSession()
 const config = useRuntimeConfig()
 const route = useRoute()
-
-// Protect this page
-definePageMeta({
-  auth: true
-})
 
 const ticket = ref(null)
 const loading = ref(true)
