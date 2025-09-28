@@ -154,12 +154,12 @@
 </template>
 
 <script setup lang="ts">
-const { user, setUser } = useUserSession()
+const { user } = useUserSession()
 const config = useRuntimeConfig()
 
 // Protect this page
 definePageMeta({
-  auth: true
+  middleware: 'auth'
 })
 
 const form = reactive({
@@ -225,14 +225,9 @@ const updateProfile = async () => {
       }
     }) as any
     
-    // Update user session with new information
-    await setUser({
-      ...user.value,
-      first_name: response.first_name,
-      last_name: response.last_name,
-      email: response.email,
-      phone_number: response.phone_number
-    })
+    // Refresh user session to get updated information
+    const { fetch: refreshSession } = useUserSession()
+    await refreshSession()
     
     success.value = 'Profile updated successfully!'
   } catch (err: any) {
@@ -254,7 +249,7 @@ const changePassword = async () => {
   }
   
   try {
-    await $fetch('/auth/change-password', {
+    await $fetch('/users/change-password', {
       baseURL: config.public.apiBaseUrl,
       method: 'POST',
       headers: {

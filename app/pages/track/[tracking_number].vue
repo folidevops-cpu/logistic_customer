@@ -201,9 +201,7 @@ const route = useRoute()
 const config = useRuntimeConfig()
 
 // This page can be accessed without authentication (public tracking)
-definePageMeta({
-  auth: false
-})
+// No middleware needed - public access
 
 const shipment = ref(null)
 const trackingEvents = ref([])

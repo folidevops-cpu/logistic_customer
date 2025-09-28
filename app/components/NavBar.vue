@@ -299,7 +299,7 @@ const handleClickOutside = (event: Event) => {
 // Watch for route changes to refresh session state
 const route = useRoute()
 watch(() => route.path, async () => {
-  if (process.client) {
+  if (import.meta.client) {
     const { fetch: refreshSession } = useUserSession()
     await refreshSession()
   }
@@ -310,7 +310,7 @@ onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   
   // Refresh session to ensure latest state
-  if (process.client) {
+  if (import.meta.client) {
     const { fetch: refreshSession } = useUserSession()
     await refreshSession()
   }

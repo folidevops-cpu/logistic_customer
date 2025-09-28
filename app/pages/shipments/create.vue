@@ -228,7 +228,6 @@
 
 <script setup lang="ts">
 const { user } = useUserSession()
-const token = useCookie('auth-token')
 const config = useRuntimeConfig()
 
 // Protect this page
@@ -289,7 +288,7 @@ const calculatePricing = async () => {
       baseURL: config.public.apiBaseUrl,
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token.value}`
+        Authorization: `Bearer ${user.value?.access_token}`
       },
       body: {
         pickup_point_id: parseInt(form.pickup_point_id),
@@ -315,7 +314,7 @@ const createShipment = async () => {
       baseURL: config.public.apiBaseUrl,
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token.value}`
+        Authorization: `Bearer ${user.value?.access_token}`
       },
       body: {
         pickup_point_id: parseInt(form.pickup_point_id),
