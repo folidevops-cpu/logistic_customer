@@ -22,7 +22,22 @@
             <p class="mt-1 text-sm text-gray-600">Update your account information and preferences.</p>
           </div>
           
-          <form @submit.prevent="updateProfile" class="p-6 space-y-6">
+          <!-- Loading State -->
+          <div v-if="profileLoading" class="p-6 text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-2 text-gray-600">Loading profile...</p>
+          </div>
+
+          <!-- Error State -->
+          <div v-else-if="profileError" class="p-6">
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              Failed to load profile: {{ profileError }}
+              <button @click="refreshProfile()" class="ml-2 underline">Retry</button>
+            </div>
+          </div>
+
+          <!-- Profile Form -->
+          <form v-else @submit.prevent="updateProfile" class="p-6 space-y-6">
             <div v-if="success" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
               {{ success }}
             </div>
@@ -162,11 +177,14 @@ definePageMeta({
   middleware: 'auth'
 })
 
+// Fetch current user profile with automatic loading states
+const { data: profileData, pending: profileLoading, error: profileError, refresh: refreshProfile } = await useFetch('/api/profile')
+
 const form = reactive({
-  first_name: user.value?.first_name || '',
-  last_name: user.value?.last_name || '',
-  email: user.value?.email || '',
-  phone_number: user.value?.phone_number || ''
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone_number: ''
 })
 
 const passwordForm = reactive({
@@ -182,28 +200,15 @@ const passwordLoading = ref(false)
 const passwordError = ref('')
 const passwordSuccess = ref('')
 
-// Fetch current user profile on mount
-onMounted(async () => {
-  await fetchProfile()
-})
-
-const fetchProfile = async () => {
-  try {
-    const response = await $fetch('/users/me', {
-      baseURL: config.public.apiBaseUrl,
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      }
-    }) as any
-    
-    form.first_name = response.first_name
-    form.last_name = response.last_name
-    form.email = response.email
-    form.phone_number = response.phone_number || ''
-  } catch (err) {
-    error.value = 'Failed to load profile information'
+// Watch profileData and populate form when data loads
+watchEffect(() => {
+  if (profileData.value) {
+    form.first_name = profileData.value.first_name || ''
+    form.last_name = profileData.value.last_name || ''
+    form.email = profileData.value.email || ''
+    form.phone_number = profileData.value.phone_number || ''
   }
-}
+})
 
 const updateProfile = async () => {
   loading.value = true
@@ -211,27 +216,22 @@ const updateProfile = async () => {
   success.value = ''
   
   try {
-    const response = await $fetch('/users/me', {
-      baseURL: config.public.apiBaseUrl,
+    await $fetch('/api/profile', {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
       body: {
         first_name: form.first_name,
         last_name: form.last_name,
         email: form.email,
         phone_number: form.phone_number
       }
-    }) as any
+    })
     
-    // Refresh user session to get updated information
-    const { fetch: refreshSession } = useUserSession()
-    await refreshSession()
+    // Refresh profile data to get updated information
+    await refreshProfile()
     
     success.value = 'Profile updated successfully!'
   } catch (err: any) {
-    error.value = err.data?.detail || 'Failed to update profile'
+    error.value = err.data?.message || 'Failed to update profile'
   } finally {
     loading.value = false
   }
@@ -249,12 +249,8 @@ const changePassword = async () => {
   }
   
   try {
-    await $fetch('/users/change-password', {
-      baseURL: config.public.apiBaseUrl,
+    await $fetch('/api/profile/change-password', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
       body: {
         current_password: passwordForm.current_password,
         new_password: passwordForm.new_password

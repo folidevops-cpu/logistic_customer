@@ -226,14 +226,10 @@ const createTicket = async () => {
       ticketData.shipment_reference = form.shipment_reference
     }
 
-    const response = await $fetch('/tickets/', {
-      baseURL: config.public.apiBaseUrl,
+    const response = await $fetch('/api/tickets', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
       body: ticketData
-    })
+    }) as any
     
     // Handle file uploads if any
     if (selectedFiles.value.length > 0) {

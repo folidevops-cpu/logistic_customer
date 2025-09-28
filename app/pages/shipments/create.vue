@@ -37,9 +37,12 @@
                   id="pickup_point"
                   v-model="form.pickup_point_id"
                   required
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  :disabled="pickupPointsPending"
+                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:opacity-50"
                 >
-                  <option value="">Select a pickup point</option>
+                  <option value="">
+                    {{ pickupPointsPending ? 'Loading pickup points...' : 'Select a pickup point' }}
+                  </option>
                   <option
                     v-for="point in pickupPoints"
                     :key="point.id"
@@ -48,6 +51,9 @@
                     {{ point.name }} - {{ point.address }}
                   </option>
                 </select>
+                <div v-if="pickupPointsError" class="mt-1 text-sm text-red-600">
+                  Failed to load pickup points. Please refresh the page.
+                </div>
               </div>
 
               <div>
@@ -56,9 +62,12 @@
                   id="dropoff_point"
                   v-model="form.dropoff_point_id"
                   required
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  :disabled="pickupPointsPending"
+                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:opacity-50"
                 >
-                  <option value="">Select a dropoff point</option>
+                  <option value="">
+                    {{ pickupPointsPending ? 'Loading dropoff points...' : 'Select a dropoff point' }}
+                  </option>
                   <option
                     v-for="point in pickupPoints"
                     :key="point.id"
@@ -249,7 +258,11 @@ const form = reactive({
   is_fragile: false
 })
 
-const pickupPoints = ref<any[]>([])
+// Fetch pickup points with useFetch
+const { data: pickupPoints, pending: pickupPointsPending, error: pickupPointsError } = await useFetch('/api/pickup-points', {
+  default: () => []
+})
+
 const pricing = ref<any>(null)
 const loading = ref(false)
 const calculatingPrice = ref(false)
@@ -262,34 +275,13 @@ const canCalculatePricing = computed(() => {
          form.dropoff_point_id
 })
 
-// Fetch pickup points on mount
-onMounted(async () => {
-  await fetchPickupPoints()
-})
-
-const fetchPickupPoints = async () => {
-  try {
-    const response = await $fetch('/pickup-points/', {
-      baseURL: config.public.apiBaseUrl
-    }) as any[]
-    pickupPoints.value = response || []
-  } catch (err) {
-    error.value = 'Failed to load pickup points'
-    pickupPoints.value = []
-  }
-}
-
 const calculatePricing = async () => {
   calculatingPrice.value = true
   error.value = ''
   
   try {
-    const response = await $fetch('/shipments/calculate-price', {
-      baseURL: config.public.apiBaseUrl,
+    const response = await $fetch('/api/shipments/calculate-price', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
       body: {
         pickup_point_id: parseInt(form.pickup_point_id),
         dropoff_point_id: parseInt(form.dropoff_point_id),
@@ -310,12 +302,8 @@ const createShipment = async () => {
   error.value = ''
   
   try {
-    const response = await $fetch('/shipments/', {
-      baseURL: config.public.apiBaseUrl,
+    const response = await $fetch('/api/shipments', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
       body: {
         pickup_point_id: parseInt(form.pickup_point_id),
         dropoff_point_id: parseInt(form.dropoff_point_id),

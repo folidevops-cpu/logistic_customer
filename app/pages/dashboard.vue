@@ -98,7 +98,13 @@
               </div>
             </div>
             <div class="p-6">
-              <div v-if="recentShipments.length === 0" class="text-gray-500 text-center py-4">
+              <div v-if="shipmentsLoading" class="text-gray-500 text-center py-4">
+                Loading shipments...
+              </div>
+              <div v-else-if="shipmentsError" class="text-red-500 text-center py-4">
+                Failed to load shipments
+              </div>
+              <div v-else-if="!recentShipments || recentShipments.length === 0" class="text-gray-500 text-center py-4">
                 No shipments yet
               </div>
               <div v-else class="space-y-4">
@@ -130,7 +136,13 @@
               </div>
             </div>
             <div class="p-6">
-              <div v-if="recentTickets.length === 0" class="text-gray-500 text-center py-4">
+              <div v-if="ticketsLoading" class="text-gray-500 text-center py-4">
+                Loading tickets...
+              </div>
+              <div v-else-if="ticketsError" class="text-red-500 text-center py-4">
+                Failed to load tickets
+              </div>
+              <div v-else-if="!recentTickets || recentTickets.length === 0" class="text-gray-500 text-center py-4">
                 No tickets yet
               </div>
               <div v-else class="space-y-4">
@@ -166,49 +178,22 @@ definePageMeta({
 })
 
 const trackingNumber = ref('')
-const recentShipments = ref<any[]>([])
-const recentTickets = ref<any[]>([])
 
-// Fetch recent data on mount
-onMounted(async () => {
-  await Promise.all([fetchRecentShipments(), fetchRecentTickets()])
+// Fetch recent shipments with useFetch
+const { data: recentShipments, pending: shipmentsLoading, error: shipmentsError } = await useFetch('/api/shipments', {
+  query: {
+    limit: 5
+  },
+  default: () => []
 })
 
-const fetchRecentShipments = async () => {
-  try {
-    const response = await $fetch('/shipments/my', {
-      baseURL: config.public.apiBaseUrl,
-      headers: {
-        Authorization: `Bearer ${(user.value as any)?.access_token}`
-      },
-      query: {
-        limit: 5
-      }
-    }) as any[]
-    recentShipments.value = response || []
-  } catch (error) {
-    console.error('Failed to fetch recent shipments:', error)
-    recentShipments.value = []
-  }
-}
-
-const fetchRecentTickets = async () => {
-  try {
-    const response = await $fetch('/tickets/mine', {
-      baseURL: config.public.apiBaseUrl,
-      headers: {
-        Authorization: `Bearer ${(user.value as any)?.access_token}`
-      },
-      query: {
-        limit: 5
-      }
-    }) as any[]
-    recentTickets.value = response || []
-  } catch (error) {
-    console.error('Failed to fetch recent tickets:', error)
-    recentTickets.value = []
-  }
-}
+// Fetch recent tickets with useFetch
+const { data: recentTickets, pending: ticketsLoading, error: ticketsError } = await useFetch('/api/tickets', {
+  query: {
+    limit: 5
+  },
+  default: () => []
+})
 
 const trackShipment = () => {
   if (trackingNumber.value.trim()) {

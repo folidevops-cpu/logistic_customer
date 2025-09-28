@@ -30,12 +30,22 @@
             <p class="mt-1 text-sm text-gray-600">View and manage your support requests.</p>
           </div>
           
-          <div v-if="loading" class="p-6 text-center">
+          <div v-if="pending" class="p-6 text-center">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p class="mt-2 text-gray-600">Loading tickets...</p>
           </div>
 
-          <div v-else-if="tickets.length === 0" class="p-6 text-center">
+          <div v-else-if="error" class="p-6 text-center">
+            <div class="text-red-500">
+              <svg class="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <h3 class="mt-4 text-lg font-medium text-gray-900">Failed to load tickets</h3>
+              <p class="mt-2 text-gray-600">Please try refreshing the page.</p>
+            </div>
+          </div>
+
+          <div v-else-if="!tickets || tickets.length === 0" class="p-6 text-center">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
@@ -167,14 +177,23 @@ definePageMeta({
   middleware: 'auth'
 })
 
-const tickets = ref([])
-const loading = ref(true)
 const currentPage = ref(1)
 const pageSize = ref(10)
-const totalItems = ref(0)
-const totalPages = ref(0)
+
+// Fetch tickets with reactive pagination using useFetch
+const { data: ticketsData, pending, error, refresh } = await useFetch('/api/tickets', {
+  query: computed(() => ({
+    page: currentPage.value,
+    limit: pageSize.value
+  })),
+  default: () => ({ items: [], total: 0 })
+})
 
 // Computed properties
+const tickets = computed(() => ticketsData.value?.items || [])
+const totalItems = computed(() => ticketsData.value?.total || 0)
+const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
+
 const visiblePages = computed(() => {
   const pages = []
   const start = Math.max(1, currentPage.value - 2)
@@ -186,40 +205,6 @@ const visiblePages = computed(() => {
   
   return pages
 })
-
-// Fetch tickets on mount and when page changes
-onMounted(() => {
-  fetchTickets()
-})
-
-watch(currentPage, () => {
-  fetchTickets()
-})
-
-const fetchTickets = async () => {
-  loading.value = true
-  
-  try {
-    const response = await $fetch('/tickets/mine', {
-      baseURL: config.public.apiBaseUrl,
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
-      query: {
-        page: currentPage.value,
-        size: pageSize.value
-      }
-    })
-    
-    tickets.value = response.items || response
-    totalItems.value = response.total || tickets.value.length
-    totalPages.value = Math.ceil(totalItems.value / pageSize.value)
-  } catch (error) {
-    console.error('Failed to fetch tickets:', error)
-  } finally {
-    loading.value = false
-  }
-}
 
 const getStatusClass = (status: string) => {
   switch (status?.toLowerCase()) {

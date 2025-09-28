@@ -14,7 +14,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="px-4 sm:px-0 text-center">
+      <div v-if="pending" class="px-4 sm:px-0 text-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
         <p class="mt-2 text-gray-600">Loading shipment details...</p>
       </div>
@@ -27,7 +27,7 @@
             </svg>
             <div class="ml-3">
               <h3 class="text-sm font-medium text-red-800">Shipment not found</h3>
-              <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+              <p class="mt-1 text-sm text-red-700">{{ error.data?.detail || 'Shipment not found. Please check the tracking number and try again.' }}</p>
             </div>
           </div>
         </div>
@@ -203,42 +203,26 @@ const config = useRuntimeConfig()
 // This page can be accessed without authentication (public tracking)
 // No middleware needed - public access
 
-const shipment = ref(null)
-const trackingEvents = ref([])
-const loading = ref(true)
-const refreshing = ref(false)
-const error = ref('')
-
-// Fetch tracking information on mount
-onMounted(() => {
-  fetchTrackingInfo()
+// Fetch tracking information with useFetch
+const { data: trackingData, pending, error, refresh } = await useFetch(`/api/tracking/${route.params.tracking_number}`, {
+  default: () => ({ shipment: null, events: [] })
 })
 
-const fetchTrackingInfo = async () => {
-  loading.value = true
-  error.value = ''
-  
-  try {
-    const response = await $fetch(`/tracking/${route.params.tracking_number}`, {
-      baseURL: config.public.apiBaseUrl
-    })
-    
-    shipment.value = response.shipment || response
-    trackingEvents.value = response.events || response.tracking_events || []
-    
-    // Sort events by timestamp (newest first)
-    trackingEvents.value.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  } catch (err: any) {
-    error.value = err.data?.detail || 'Shipment not found. Please check the tracking number and try again.'
-    shipment.value = null
-  } finally {
-    loading.value = false
-  }
-}
+// Computed properties for reactive data
+const shipment = computed(() => trackingData.value?.shipment || trackingData.value)
+const trackingEvents = computed(() => {
+  const events = trackingData.value?.events || trackingData.value?.tracking_events || []
+  // Sort events by timestamp (newest first)
+  return events.length > 0 
+    ? events.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    : []
+})
+
+const refreshing = ref(false)
 
 const refreshTracking = async () => {
   refreshing.value = true
-  await fetchTrackingInfo()
+  await refresh()
   refreshing.value = false
 }
 

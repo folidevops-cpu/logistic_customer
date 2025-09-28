@@ -144,8 +144,7 @@ const handleRegister = async () => {
   }
   
   try {
-    const response = await $fetch('/auth/register', {
-      baseURL: config.public.apiBaseUrl,
+    const response = await $fetch('/api/auth/register', {
       method: 'POST',
       body: {
         first_name: form.first_name,
@@ -156,36 +155,16 @@ const handleRegister = async () => {
       }
     }) as any
     
-    if (response.id) {
-      // Now login the user
-      const loginResponse = await $fetch('/auth/login', {
-        baseURL: config.public.apiBaseUrl,
-        method: 'POST',
-        body: {
-          email: form.email,
-          password: form.password
-        }
-      }) as any
+    if (response.success) {
+      // Registration and auto-login handled by server route
+      // Force refresh the user session to ensure UI updates immediately
+      const { fetch: refreshSession } = useUserSession()
+      await refreshSession()
       
-      if (loginResponse.access_token) {
-        // Use the new nuxt-auth-utils login API
-        await $fetch('/api/auth/login', {
-          method: 'POST',
-          body: {
-            email: form.email,
-            password: form.password
-          }
-        })
-        
-        // Force refresh the user session to ensure UI updates immediately
-        const { fetch: refreshSession } = useUserSession()
-        await refreshSession()
-        
-        await navigateTo('/dashboard')
-      }
+      await navigateTo('/dashboard')
     }
   } catch (err: any) {
-    error.value = err.data?.detail || 'Registration failed. Please try again.'
+    error.value = err.data?.message || 'Registration failed. Please try again.'
   } finally {
     loading.value = false
   }

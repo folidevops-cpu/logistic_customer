@@ -17,9 +17,21 @@
         </div>
       </div>
 
-      <div v-if="loading" class="px-4 sm:px-0 text-center">
+      <div v-if="pending" class="px-4 sm:px-0 text-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
         <p class="mt-2 text-gray-600">Loading ticket details...</p>
+      </div>
+
+      <div v-else-if="error" class="px-4 sm:px-0 text-center">
+        <div class="bg-white shadow rounded-lg p-6">
+          <div class="text-red-500">
+            <svg class="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">Failed to load ticket</h3>
+            <p class="mt-2 text-gray-600">Please try refreshing the page.</p>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="!ticket" class="px-4 sm:px-0 text-center">
@@ -205,55 +217,29 @@ const { user } = useUserSession()
 const config = useRuntimeConfig()
 const route = useRoute()
 
-const ticket = ref(null)
-const loading = ref(true)
+// Fetch ticket details with useFetch
+const { data: ticket, pending, error, refresh } = await useFetch(`/api/tickets/${route.params.id}`, {
+  default: () => null
+})
+
 const newComment = ref('')
 const commentLoading = ref(false)
 const commentError = ref('')
-
-// Fetch ticket details on mount
-onMounted(() => {
-  fetchTicket()
-})
-
-const fetchTicket = async () => {
-  loading.value = true
-  
-  try {
-    const response = await $fetch(`/tickets/${route.params.id}`, {
-      baseURL: config.public.apiBaseUrl,
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      }
-    })
-    
-    ticket.value = response
-  } catch (error) {
-    console.error('Failed to fetch ticket:', error)
-    ticket.value = null
-  } finally {
-    loading.value = false
-  }
-}
 
 const addComment = async () => {
   commentLoading.value = true
   commentError.value = ''
   
   try {
-    await $fetch(`/tickets/${ticket.value.id}/comments`, {
-      baseURL: config.public.apiBaseUrl,
+    await $fetch(`/api/tickets/${ticket.value.id}/comments`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${user.value?.access_token}`
-      },
       body: {
         content: newComment.value.trim()
       }
     })
     
     // Refresh ticket to show new comment
-    await fetchTicket()
+    await refresh()
     newComment.value = ''
   } catch (err: any) {
     commentError.value = err.data?.detail || 'Failed to add comment'
